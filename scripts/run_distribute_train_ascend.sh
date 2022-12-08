@@ -4,13 +4,14 @@
 source scripts/env_npu.sh;
 
 # clear output directory
-rm -rf outputs
+rm -rf ./outputs
 
 export GLOG_v=3
 
 # distributed training json about device ip address
 export RANK_TABLE_FILE=$1
 export MINDSPORE_HCCL_CONFIG_PATH=$RANK_TABLE_FILE
+
 # ensure log dir exists
 DIR=./outputs
 if [[ ! -d "$DIR" ]]; then
@@ -30,7 +31,7 @@ for((i=0;i<$((RANK_SIZE));i++));
     PID_START=$((KERNEL_NUM*i))
     PID_END=$((PID_START+KERNEL_NUM-1))
     taskset -c ${PID_START}-${PID_END} \
-      python main.py \
+      python train.py \
                --coco_path=/opt/npu/data/coco2017 \
                --output_dir=./outputs \
                --mindrecord_dir=/home/w30005666/coco_mindrecord/ \
@@ -41,5 +42,3 @@ for((i=0;i<$((RANK_SIZE));i++));
                --device_target="Ascend" \
                --device_id=${i} >> outputs/train${i}.log 2>&1 &
   done
-
-

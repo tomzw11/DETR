@@ -10,7 +10,6 @@ from mindspore.common import initializer as init
 from src.DETR.init_weights import KaimingUniform, UniformBias
 from src.DETR.util import box_cxcywh_to_xyxy
 from src.DETR.backbone import build_backbone
-from src.DETR.matcher import build_matcher
 from src.DETR.transformer import build_transformer
 from src.DETR.criterion import SetCriterion
 
@@ -84,10 +83,15 @@ class DETR(nn.Cell):
         outputs_coord = self.bbox_embed(hs)
         outputs_coord = self.sigmoid(outputs_coord)
 
-        # (head, bs, h, w)
-        pred_logits = outputs_class
-        pred_boxes = outputs_coord
-
+        if not self.aux_loss:
+            # (bs, h, w)
+            pred_logits = outputs_class[-1]
+            pred_boxes = outputs_coord[-1]
+        else:
+            # (head, bs, h, w)
+            pred_logits = outputs_class
+            pred_boxes = outputs_coord
+            
         return pred_logits, pred_boxes
 
 class PostProcess(object):
@@ -146,6 +150,11 @@ def build(args):
         num_queries=args.num_queries,
         aux_loss=args.aux_loss
     )
+
+    if args.context_mode=="pynative":
+        from src.DETR.matcher_np import build_matcher
+    else:
+        from src.DETR.matcher import build_matcher
 
     matcher = build_matcher(args)
     weight_dict = {'loss_ce': 1, 'loss_bbox': args.bbox_loss_coef, 'loss_giou': args.giou_loss_coef}

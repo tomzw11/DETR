@@ -2,6 +2,8 @@ import mindspore as ms
 from mindspore import nn
 from mindspore import ops
 from mindspore import Tensor
+from mindspore import dtype as mstype
+
 from mindspore.scipy.optimize.linear_sum_assignment import _linear_sum_assignment as lsap
 from src.DETR.util import box_cxcywh_to_xyxy, generalized_box_iou
 

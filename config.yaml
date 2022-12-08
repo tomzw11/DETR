@@ -1,0 +1,66 @@
+lr: 0.0001
+lr_backbone: 0.00001
+lr_drop: 200
+weight_decay: 0.0001
+clip_max_norm: 0.1
+batch_size: 4
+start_epoch: 0
+epochs: 300
+resume: ""
+pretrained: "/home/w30005666/ckpt/ms_resnet_50.ckpt"
+seed: 42
+
+# context
+device_id: 0
+device_target: "Ascend"
+context_mode: "graph"
+coco_path: "/opt/npu/data/coco2017"
+output_dir: "./outputs"
+mindrecord_dir: "/home/w30005666/coco_mindrecord/"
+clip_max_norm: 0.1
+dropout: 0.1
+
+# dataset parameters
+dataset_file: 'coco'
+mindrecord_dir: 'data'
+coco_path: ""
+train_data_type: "train2017"
+val_data_type': 'val2017'
+num_classes: 91
+output_dir: ''
+num_parallel_workers: 8
+python_multiprocessing: False
+
+max_size: 960
+flip_ratio: 0.5
+
+# * Backbone
+backbone: "resnet50"
+
+# * Transformer
+enc_layers: 6
+dec_layers: 6
+dim_feedforward: 2048
+hidden_dim: 256
+dropout: 0.1
+nheads: 8
+num_queries: 100
+pre_norm: False
+
+# Loss
+aux_loss: True
+
+# * Matcher
+set_cost_class: 1
+set_cost_bbox: 5
+set_cost_giou: 2
+
+# * Loss coefficients
+dice_loss_coef: 1
+bbox_loss_coef: 5
+giou_loss_coef: 2
+eos_coef: 0.1
+
+# distributed switch
+distributed: 1
+

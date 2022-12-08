@@ -100,9 +100,10 @@ class SetCriterion(nn.Cell):
         self.cls_loss = LogSoftmaxCrossEntropyWithLogits(empty_weight)
 
         self.reduce_sum = ops.ReduceSum()
+        self.split = ops.Split(0, 6)
+        self.squeeze = ops.Squeeze(0)
 
     def construct(self, pred_logits, pred_boxes, gt_boxes, gt_labels, gt_valids):
-
         """
         if aux_loss
             outputs:
@@ -117,18 +118,29 @@ class SetCriterion(nn.Cell):
             gt_labels: (bs, num_queries, 4)
             gt_isvalid: (bs, num_queries) [True, True, False, False ......]
         """
+        if not self.aux_loss:
+            return 6 * self.calculate_loss(pred_logits, pred_boxes, gt_boxes, gt_labels, gt_valids)
 
-        losses_1 = self.calculate_loss(pred_logits[0], pred_boxes[0], gt_boxes, gt_labels, gt_valids)
-        losses_2 = self.calculate_loss(pred_logits[1], pred_boxes[1], gt_boxes, gt_labels, gt_valids)
-        losses_3 = self.calculate_loss(pred_logits[2], pred_boxes[2], gt_boxes, gt_labels, gt_valids)
-        losses_4 = self.calculate_loss(pred_logits[3], pred_boxes[3], gt_boxes, gt_labels, gt_valids)
-        losses_5 = self.calculate_loss(pred_logits[4], pred_boxes[4], gt_boxes, gt_labels, gt_valids)
-        losses_6 = self.calculate_loss(pred_logits[5], pred_boxes[5], gt_boxes, gt_labels, gt_valids)
+        else:
+            # (head, bs, num_queries, num_classes+1) to (1, bs, num_queries, num_classes+1)
+            pl1, pl2, pl3, pl4, pl5, pl6 = self.split(pred_logits)
+            pb1, pb2, pb3, pb4, pb5, pb6 = self.split(pred_boxes)
 
-        print(losses_1, losses_2, losses_3, losses_4, losses_5, losses_6)
-        return losses_1+losses_2+losses_3+losses_4+losses_5+losses_6
+            losses_1 = self.calculate_loss(pl1, pb1, gt_boxes, gt_labels, gt_valids)
+            losses_2 = self.calculate_loss(pl2, pb2, gt_boxes, gt_labels, gt_valids)
+            losses_3 = self.calculate_loss(pl3, pb3, gt_boxes, gt_labels, gt_valids)
+            losses_4 = self.calculate_loss(pl4, pb4, gt_boxes, gt_labels, gt_valids)
+            losses_5 = self.calculate_loss(pl5, pb5, gt_boxes, gt_labels, gt_valids)
+            losses_6 = self.calculate_loss(pl6, pb6, gt_boxes, gt_labels, gt_valids)
+
+            return losses_1+losses_2+losses_3+losses_4+losses_5+losses_6
 
     def calculate_loss(self, pred_logits, pred_boxes, gt_boxes, gt_labels, gt_valids):
+
+        # (1, bs, num_queries, num_classes+1) to (bs, num_queries, num_classes+1)
+        pred_logits = self.squeeze(pred_logits)
+        pred_boxes = self.squeeze(pred_boxes)
+
         pred_logits = pred_logits.astype(mstype.float32)
         pred_boxes = pred_boxes.astype(mstype.float32)
         target_classes, target_boxes, boxes_valid = self.matcher(pred_logits,
@@ -141,7 +153,5 @@ class SetCriterion(nn.Cell):
         boxes_valid = ops.stop_gradient(boxes_valid)
         label_losses = self.cls_loss(pred_logits, target_classes)
         loss_bbox, loss_giou = self.bbox_loss(pred_boxes, target_boxes, boxes_valid)
-
         losses = self.label_weight * label_losses + self.bbox_weight * loss_bbox + self.giou_weight * loss_giou
-        
         return losses

@@ -163,8 +163,17 @@ def _resnet(arch, block, layers, pretrained, **kwargs):
     model = ResNet(block, layers, **kwargs)
     model.num_channels = 512 if arch in ('resnet18', 'resnet34') else 2048
     if pretrained:
+        print("loading pretrained resnet weights.")
         ckpt = load_checkpoint(pretrained)
-        load_param_into_net(model, ckpt, strict_load=True)
+        unloaded = load_param_into_net(model, ckpt, strict_load=True)
+
+        if not unloaded:
+            print("all backbone weights loaded.")
+        else:
+            for u in unloaded:
+                print(u, " unloaded")
+    else:
+        print("not loading backbone weights.")
     return model
 
 
