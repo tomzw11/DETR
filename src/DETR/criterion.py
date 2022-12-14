@@ -119,7 +119,7 @@ class SetCriterion(nn.Cell):
             gt_isvalid: (bs, num_queries) [True, True, False, False ......]
         """
         if not self.aux_loss:
-            return 6 * self.calculate_loss(pred_logits, pred_boxes, gt_boxes, gt_labels, gt_valids)
+            return self.calculate_loss(pred_logits, pred_boxes, gt_boxes, gt_labels, gt_valids)
 
         else:
             # (head, bs, num_queries, num_classes+1) to (1, bs, num_queries, num_classes+1)
@@ -137,9 +137,10 @@ class SetCriterion(nn.Cell):
 
     def calculate_loss(self, pred_logits, pred_boxes, gt_boxes, gt_labels, gt_valids):
 
-        # (1, bs, num_queries, num_classes+1) to (bs, num_queries, num_classes+1)
-        pred_logits = self.squeeze(pred_logits)
-        pred_boxes = self.squeeze(pred_boxes)
+        if self.aux_loss:
+            # (1, bs, num_queries, num_classes+1) to (bs, num_queries, num_classes+1)
+            pred_logits = self.squeeze(pred_logits)
+            pred_boxes = self.squeeze(pred_boxes)
 
         pred_logits = pred_logits.astype(mstype.float32)
         pred_boxes = pred_boxes.astype(mstype.float32)

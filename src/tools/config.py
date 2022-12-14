@@ -121,6 +121,12 @@ def get_config():
     default, helper, choices = parse_yaml(path_args.config_path)
     args = parse_cli_to_yaml(parser=parser, cfg=default, helper=helper, choices=choices, cfg_path=path_args.config_path)
     final_config = merge(args, default)
+
+    print("################################ training config ####################################")
+    for c in final_config:
+        print(c, final_config[c])
+    print("################################ training config ####################################")
+
     return Config(final_config)
 
 

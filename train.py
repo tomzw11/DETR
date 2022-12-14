@@ -21,10 +21,10 @@ def main():
 
     if config.context_mode=="pynative":
         context.set_context(mode=context.PYNATIVE_MODE, device_target=config.device_target)
-        print("pynative mode")
+        # print("pynative mode")
     else:
         context.set_context(mode=context.GRAPH_MODE, device_target=config.device_target)
-        print("graph mode")
+        # print("graph mode")
 
     # init seed
     set_seed(config.seed)
@@ -34,7 +34,7 @@ def main():
     if config.distributed:
         context.set_context(device_id=config.device_id)
         rank = int(os.getenv('RANK_ID', 0))
-        print(f'get device_id: {config.device_id}, rank_id: {rank}')
+        # print(f'get device_id: {config.device_id}, rank_id: {rank}')
         if config.device_target == "Ascend":
             init(backend_name='hccl')
         else:
@@ -43,7 +43,7 @@ def main():
         context.set_auto_parallel_context(device_num=device_num,
                                           parallel_mode=ParallelMode.DATA_PARALLEL,
                                           gradients_mean=True)
-        print(f'distributed init: {config.device_id}/{device_num}')
+        # print(f'distributed init: {config.device_id}/{device_num}')
     else:
         rank = 0
         device_num = 1
@@ -76,7 +76,7 @@ def main():
             new_ckpt[new_key] = ckpt[k]
 
         unloaded = load_param_into_net(net, new_ckpt, strict_load=True)
-        print('load pretrained weights checkpoint')
+        print('resume training from checkpoint')
 
         if not unloaded:
             print("all weights loaded.")
@@ -112,8 +112,11 @@ def main():
     optimizer = nn.AdamWeightDecay(param_dicts)
 
     # init mindspore model
+    scale_sense = nn.DynamicLossScaleUpdateCell(loss_scale_value=2**12, scale_factor=2, scale_window=1000)
+
     net_with_loss = WithLossCell(net, criterion)
-    net_with_grad = WithGradCell(net_with_loss, optimizer, clip_value=config.clip_max_norm)
+    net_with_grad = WithGradCell(net_with_loss, optimizer, scale_sense, clip_value=config.clip_max_norm)
+
     print("Create DETR network done!")
 
     # callbacks
