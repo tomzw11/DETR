@@ -1,6 +1,21 @@
+# Copyright 2022 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 
 import time
 import os
+import sys
 from collections import OrderedDict
 from tqdm import tqdm
 
@@ -12,7 +27,7 @@ from mindspore.train.serialization import load_checkpoint, load_param_into_net
 
 from pycocotools.coco import COCO
 
-from src import prepare_args
+from src.tools.config import config
 from src.data.coco_eval import CocoEvaluator
 from src.DETR.util import box_cxcywh_to_xyxy
 from src.data.dataset import create_mindrecord, create_detr_dataset
@@ -33,7 +48,7 @@ def load_ckpt(weights_path):
 
 
 def build_net(args):
-    num_classes = args.num_classes
+    num_classes = config.num_classes
 
     backbone = build_backbone(args)
     transformer = build_transformer(args)
@@ -41,39 +56,56 @@ def build_net(args):
         backbone,
         transformer,
         num_classes=num_classes,
-        num_queries=args.num_queries,
-        aux_loss=args.aux_loss
+        num_queries=config.num_queries,
+        aux_loss=config.aux_loss
     )
     return model
 
 
 def evaluation():
-    args = prepare_args()
-    args.aux_loss = False
 
-    context.set_context(mode=context.GRAPH_MODE, device_target=args.device_target)
-    context.set_context(device_id=args.device_id)
+    config.aux_loss = False
 
-    net = build_net(args)
+    context.set_context(mode=context.GRAPH_MODE, device_target=config.device_target)
+    context.set_context(device_id=config.device_id)
+
+    net = build_net(config)
     net.set_train(False)
 
-    load_param_into_net(net, load_ckpt(args.resume), strict_load=True)
+    ckpt = load_checkpoint(config.resume)
+    new_ckpt = {}
+    for k in ckpt.keys():
+        k_split = k.split(".")
+        if k_split[0]=="network" and k_split[1]=="net":
+            new_key = ".".join(k_split[2:])
+        else:
+            new_key = ".".join(k_split[1:])
+
+        new_ckpt[new_key] = ckpt[k]
+
+    unloaded_params = load_param_into_net(net, new_ckpt, strict_load=True)
+    if not unloaded_params:
+        print("all weights loaded.")
+    else:
+        for p in unloaded_params:
+            print(p, " unloaded.")
+        sys.exit()
 
     net.to_float(ms.float16)
-    if args.device_target == "GPU":
+    if config.device_target == "GPU":
         for _, cell in net.cells_and_names():
             if isinstance(cell, (nn.BatchNorm2d, nn.LayerNorm)):
                 cell.to_float(ms.float32)
 
-    mindrecord_file = create_mindrecord(args, 0, "DETR.mindrecord.eval", False)
-    ds = create_detr_dataset(args, mindrecord_file, batch_size=16,
+    mindrecord_file = create_mindrecord(config, 0, "DETR.mindrecord.eval", False)
+    ds = create_detr_dataset(config, mindrecord_file, batch_size=16,
                              device_num=1, rank_id=0,
-                             num_parallel_workers=args.num_parallel_workers,
-                             python_multiprocessing=args.python_multiprocessing,
+                             num_parallel_workers=config.num_parallel_workers,
+                             python_multiprocessing=config.python_multiprocessing,
                              is_training=False)
     total = ds.get_dataset_size()
 
-    anno_json = os.path.join(args.coco_path, "annotations/instances_{}.json".format(args.val_data_type))
+    anno_json = os.path.join(config.coco_path, "annotations/instances_{}.json".format(config.val_data_type))
     coco_gt = COCO(anno_json)
     coco_evaluator = CocoEvaluator(coco_gt, ('bbox', ))
 

@@ -4,28 +4,31 @@ lr_drop: 200
 weight_decay: 0.0001
 clip_max_norm: 0.1
 batch_size: 4
-start_epoch: 0
+start_epoch: 166
 epochs: 300
-resume: ""
-pretrained: "/home/w30005666/ckpt/ms_resnet_50.ckpt"
+resume: "/home/w30005666/DETR/train_1220/detr_epoch_166.ckpt"
+pretrained: ""
 seed: 42
 
 # context
 device_id: 0
 device_target: "Ascend"
-context_mode: "graph"
+context_mode: "pynative"
 coco_path: "/opt/npu/data/coco2017"
 output_dir: "./outputs"
 mindrecord_dir: "/home/w30005666/coco_mindrecord/"
 clip_max_norm: 0.1
 dropout: 0.1
 
+# Loss
+aux_loss: False
+
 # dataset parameters
 dataset_file: 'coco'
 mindrecord_dir: 'data'
 coco_path: ""
 train_data_type: "train2017"
-val_data_type': 'val2017'
+val_data_type: 'val2017'
 num_classes: 91
 output_dir: ''
 num_parallel_workers: 8
@@ -46,9 +49,6 @@ dropout: 0.1
 nheads: 8
 num_queries: 100
 pre_norm: False
-
-# Loss
-aux_loss: True
 
 # * Matcher
 set_cost_class: 1

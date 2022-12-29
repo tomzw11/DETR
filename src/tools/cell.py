@@ -93,3 +93,40 @@ class WithGradCell(nn.TrainOneStepWithLossScaleCell):
         loss = self.network(*inputs)
         grads = self.grad(self.network, self.weights)(*inputs, self.scale_sense)
         return self.clip_backward(loss, grads)
+
+
+# # with overflow check for debug.
+# class WithGradCell(nn.TrainOneStepWithLossScaleCell):
+#     def __init__(self, network, optimizer, scale_sense, clip_value=0.1):
+#         super(WithGradCell, self).__init__(network, optimizer, scale_sense)
+
+#         self.max_grad_norm = clip_value
+#         # hacker
+#         self.enable_tuple_broaden = True
+
+#     def construct(self, *inputs):
+#         # compute loss
+#         loss = self.network(*inputs)
+
+#         # loss scale
+#         status, scaling_sens = self.start_overflow_check(loss, self.scale_sense)
+#         scaling_sens_filled = C.ones_like(loss) * F.cast(scaling_sens, F.dtype(loss))
+#         grads = self.grad(self.network, self.weights)(*inputs, scaling_sens_filled)
+#         grads = self.hyper_map(F.partial(grad_scale, scaling_sens), grads)
+
+#         # apply grad reducer on grads
+#         if self.reducer_flag:
+#             grads = self.grad_reducer(grads)
+
+#         # get the overflow buffer
+#         cond = self.get_overflow_status(status, grads)
+#         overflow = self.process_loss_scale(cond)
+
+#         # if there is no overflow, do optimize
+#         if not overflow:
+#             # clip grads
+#             grads = ops.clip_by_global_norm(grads, clip_norm=self.max_grad_norm)
+#             loss = F.depend(loss, self.optimizer(grads))
+#         else:
+#             print('current gradients is overflowing, skip this step')
+#         return loss
