@@ -1,19 +1,21 @@
+# Train params
 lr: 0.0001
 lr_backbone: 0.00001
 lr_drop: 200
 weight_decay: 0.0001
 clip_max_norm: 0.1
 batch_size: 4
-start_epoch: 166
+start_epoch: 0
 epochs: 300
-resume: "/home/w30005666/DETR/train_1220/detr_epoch_166.ckpt"
-pretrained: ""
+save_num_ckpt: 50
+resume: ""
+pretrained: "/home/w30005666/ckpt/ms_resnet_50.ckpt"
 seed: 42
 
-# context
+# Context
 device_id: 0
 device_target: "Ascend"
-context_mode: "pynative"
+context_mode: "graph"
 coco_path: "/opt/npu/data/coco2017"
 output_dir: "./outputs"
 mindrecord_dir: "/home/w30005666/coco_mindrecord/"
@@ -21,9 +23,9 @@ clip_max_norm: 0.1
 dropout: 0.1
 
 # Loss
-aux_loss: False
+aux_loss: True
 
-# dataset parameters
+# Dataset parameters
 dataset_file: 'coco'
 mindrecord_dir: 'data'
 coco_path: ""
@@ -37,10 +39,10 @@ python_multiprocessing: False
 max_size: 960
 flip_ratio: 0.5
 
-# * Backbone
+# Backbone
 backbone: "resnet50"
 
-# * Transformer
+# Transformer
 enc_layers: 6
 dec_layers: 6
 dim_feedforward: 2048
@@ -50,17 +52,17 @@ nheads: 8
 num_queries: 100
 pre_norm: False
 
-# * Matcher
+# Matcher
 set_cost_class: 1
 set_cost_bbox: 5
 set_cost_giou: 2
 
-# * Loss coefficients
+# Loss coefficients
 dice_loss_coef: 1
 bbox_loss_coef: 5
 giou_loss_coef: 2
 eos_coef: 0.1
 
-# distributed switch
+# Distributed switch
 distributed: 1
 

@@ -16,15 +16,14 @@ from src.data.dataset import create_mindrecord, create_detr_dataset
 from src.tools.cell import WithLossCell, WithGradCell
 from src.tools.average_meter import AverageMeter
 
+import numpy as np
 
 def main():
 
     if config.context_mode=="pynative":
         context.set_context(mode=context.PYNATIVE_MODE, device_target=config.device_target)
-        # print("pynative mode")
     else:
         context.set_context(mode=context.GRAPH_MODE, device_target=config.device_target)
-        # print("graph mode")
 
     # init seed
     set_seed(config.seed)
@@ -43,7 +42,6 @@ def main():
         context.set_auto_parallel_context(device_num=device_num,
                                           parallel_mode=ParallelMode.DATA_PARALLEL,
                                           gradients_mean=True)
-        # print(f'distributed init: {config.device_id}/{device_num}')
     else:
         rank = 0
         device_num = 1
@@ -133,6 +131,12 @@ def main():
             valid = data['valid']
             loss = net_with_grad(img_data, mask, boxes, labels, valid)
 
+            # print("grads shape")
+            # for grad in grads:
+            #     grad_np = grad.asnumpy()
+            #     print(grad.shape, np.min(grad_np), np.max(grad_np), grad.dtype)
+            # sys.exit()
+
             loss_meter.update(loss.asnumpy())
             end_time = time.time()
 
@@ -147,11 +151,13 @@ def main():
                 ), flush=True)
         loss_meter.reset()
 
-        if rank == 0: # save ckpt only once
+        # sys.exit("debug train complete.")
+
+        if rank == 0: # save ckpt on device 0.
             ckpt_path = os.path.join(config.output_dir, f'detr_epoch_{e}.ckpt')
             ms.save_checkpoint(net, ckpt_path)
 
-            if len(ckpt_deque) > 30:
+            if len(ckpt_deque) > config.save_num_ckpt:
                 pre_ckpt_path = ckpt_deque.popleft()
                 os.remove(pre_ckpt_path)
             ckpt_deque.append(ckpt_path)
