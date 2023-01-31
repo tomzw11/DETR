@@ -8,17 +8,17 @@ batch_size: 4
 start_epoch: 0
 epochs: 300
 save_num_ckpt: 10
-resume: ""
-pretrained: "/home/w30005666/ckpt/ms_resnet_50.ckpt"
+resume: "/disk1/w30005666/ckpt/detr_epoch_299_baseline.ckpt"
+pretrained: ""
 seed: 42
 
 # Context
-device_id: 0
+device_id: 7
 device_target: "Ascend"
-context_mode: "graph"
+context_mode: "pynative"
 coco_path: "/opt/npu/data/coco2017"
 output_dir: "./outputs"
-mindrecord_dir: "/home/w30005666/coco_mindrecord/"
+mindrecord_dir: "/disk1/w30005666/coco_mindrecord/"
 clip_max_norm: 0.1
 dropout: 0.1
 
@@ -27,7 +27,6 @@ aux_loss: True
 
 # Dataset parameters
 dataset_file: 'coco'
-mindrecord_dir: 'data'
 coco_path: ""
 train_data_type: "train2017"
 val_data_type: 'val2017'
