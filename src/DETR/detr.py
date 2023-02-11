@@ -65,8 +65,6 @@ class DETR(nn.Cell):
                                (center_x, center_y, height, width). These values are normalized in [0, 1],
                                relative to the size of each individual image (disregarding possible padding).
                                See PostProcess for information on how to retrieve the unnormalized bounding box.
-               - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
-                                dictionnaries containing the two above keys for each decoder layer.
         """
         src, mask, pos = self.backbone(x, mask)
 
@@ -88,10 +86,10 @@ class DETR(nn.Cell):
             pred_logits = outputs_class[-1]
             pred_boxes = outputs_coord[-1]
         else:
-            # (head, bs, h, w)
+            # (head, bs, h, w)    
             pred_logits = outputs_class
             pred_boxes = outputs_coord
-            
+
         return pred_logits, pred_boxes
 
 class PostProcess(object):

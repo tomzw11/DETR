@@ -82,13 +82,10 @@ def main():
             for u in unloaded:
                 print(u, " unloaded")
 
-    data_dtype = ms.float32
-    if config.device_target == 'Ascend':
-        net.to_float(ms.float16)
-        for _, cell in net.cells_and_names():
-            if isinstance(cell, (nn.BatchNorm2d, nn.LayerNorm)):
-                cell.to_float(ms.float32)
-        data_dtype = ms.float16
+    # different precision between loss module and model.
+    data_dtype = ms.float16
+    net.to_float(data_dtype)
+    criterion.to_float(ms.float32)
     net.set_train()
 
     # lr and optimizer
@@ -113,7 +110,7 @@ def main():
     scale_sense = nn.DynamicLossScaleUpdateCell(loss_scale_value=2**12, scale_factor=2, scale_window=1000)
 
     net_with_loss = WithLossCell(net, criterion)
-    net_with_grad = WithGradCell(net_with_loss, optimizer, scale_sense, clip_value=config.clip_max_norm)
+    net_with_grad = WithGradCell(net_with_loss, optimizer, scale_sense, config.clip_max_norm)
 
     print("Create DETR network done!")
 
@@ -131,12 +128,6 @@ def main():
             valid = data['valid']
             loss = net_with_grad(img_data, mask, boxes, labels, valid)
 
-            # print("grads shape")
-            # for grad in grads:
-            #     grad_np = grad.asnumpy()
-            #     print(grad.shape, np.min(grad_np), np.max(grad_np), grad.dtype)
-            # sys.exit()
-
             loss_meter.update(loss.asnumpy())
             end_time = time.time()
 
@@ -151,8 +142,6 @@ def main():
                 ), flush=True)
         loss_meter.reset()
 
-        # sys.exit("debug train complete.")
-
         if rank == 0: # save ckpt on device 0.
             ckpt_path = os.path.join(config.output_dir, f'detr_epoch_{e}.ckpt')
             ms.save_checkpoint(net, ckpt_path)
@@ -161,7 +150,6 @@ def main():
                 pre_ckpt_path = ckpt_deque.popleft()
                 os.remove(pre_ckpt_path)
             ckpt_deque.append(ckpt_path)
-
 
 if __name__ == '__main__':
     main()

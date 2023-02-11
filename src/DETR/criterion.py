@@ -1,35 +1,9 @@
-
 from mindspore import nn
 from mindspore import ops
 from mindspore import dtype as mstype
 from mindspore import Tensor
 from mindspore import ms_function
 from src.DETR.util import box_cxcywh_to_xyxy, generalized_box_iou
-
-
-class LogSoftmaxCrossEntropyWithLogits(nn.Cell):
-    def __init__(self, weights):
-        super(LogSoftmaxCrossEntropyWithLogits, self).__init__()
-        self.log_soft_max = nn.LogSoftmax()
-        self.nll_loss = ops.NLLLoss(reduction='mean')
-        self.weights = Tensor(weights, dtype=mstype.float32)
-        self.reshape = ops.Reshape()
-
-    @ms_function
-    def construct(self, logits, labels):
-        """
-        :param logits: (Bs, N, classes). float32
-        :param labels: (Bs, N), int32
-        :return: loss
-        """
-        bs, n, cls = logits.shape
-        logits = self.reshape(logits, (bs * n, cls))
-        labels = self.reshape(labels, (bs * n,))
-
-        logits = self.log_soft_max(logits)
-        loss, _ = self.nll_loss(logits, labels, self.weights)
-        return loss
-
 
 class BoxLoss(nn.Cell):
     def __init__(self):
@@ -97,7 +71,7 @@ class SetCriterion(nn.Cell):
         self.aux_loss = aux_loss
 
         self.bbox_loss = BoxLoss()
-        self.cls_loss = LogSoftmaxCrossEntropyWithLogits(empty_weight)
+        self.cls_loss = nn.CrossEntropyLoss(weight=empty_weight)
 
         self.reduce_sum = ops.ReduceSum()
         self.split = ops.Split(0, 6)
@@ -152,7 +126,9 @@ class SetCriterion(nn.Cell):
         target_classes = ops.stop_gradient(target_classes)
         target_boxes = ops.stop_gradient(target_boxes)
         boxes_valid = ops.stop_gradient(boxes_valid)
-        label_losses = self.cls_loss(pred_logits, target_classes)
+        
+        label_losses = self.cls_loss(pred_logits.transpose((0,2,1)), target_classes)
         loss_bbox, loss_giou = self.bbox_loss(pred_boxes, target_boxes, boxes_valid)
         losses = self.label_weight * label_losses + self.bbox_weight * loss_bbox + self.giou_weight * loss_giou
+        
         return losses
