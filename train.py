@@ -82,10 +82,7 @@ def main():
             for u in unloaded:
                 print(u, " unloaded")
 
-    # different precision between loss module and model.
-    data_dtype = ms.float16
-    net.to_float(data_dtype)
-    criterion.to_float(ms.float32)
+    data_dtype = ms.float32
     net.set_train()
 
     # lr and optimizer
@@ -126,6 +123,7 @@ def main():
             boxes = data['boxes']
             labels = data['labels']
             valid = data['valid']
+            
             loss = net_with_grad(img_data, mask, boxes, labels, valid)
 
             loss_meter.update(loss.asnumpy())

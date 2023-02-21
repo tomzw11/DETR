@@ -30,7 +30,6 @@ class MLP(nn.Cell):
     def construct(self, x):
         return self.layers(x)
 
-
 class DETR(nn.Cell):
 
     """ This is the DETR module that performs object detection """

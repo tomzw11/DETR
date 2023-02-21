@@ -2,7 +2,6 @@ from mindspore import nn
 from mindspore import ops
 from mindspore import dtype as mstype
 from mindspore import Tensor
-from mindspore import ms_function
 from src.DETR.util import box_cxcywh_to_xyxy, generalized_box_iou
 
 class BoxLoss(nn.Cell):
@@ -14,7 +13,6 @@ class BoxLoss(nn.Cell):
         self.reduce_sum = ops.ReduceSum()
         self.reshape = ops.Reshape()
 
-    @ms_function
     def construct(self, pred_boxes, target_boxes, boxes_valid):
         """
         :param pred_boxes: (Bs, Queries, 4). float32
