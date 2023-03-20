@@ -6,13 +6,41 @@ Copy-paste from torch.nn.Transformer with modifications:
     * extra LN at the end of encoder is removed
     * decoder returns a stack of activations from all decoding layers
 """
+import numpy as np
 
 import mindspore as ms
 from mindspore import nn
 from mindspore import ops
+from mindspore import Tensor, Parameter
+from mindspore.ops import operations as P
+from mindspore import dtype as mstype
+
 from mindspore import context
 from mindspore.common.initializer import initializer
 from src.DETR.init_weights import KaimingUniform, UniformBias
+
+class CustomLayerNorm(nn.Cell):
+    """LayerNorm layer"""
+    def __init__(self, d_model):
+        """init function"""
+        super(CustomLayerNorm, self).__init__()
+        self.reducemean = P.ReduceMean(keep_dims=True)
+        self.sub = P.Sub()
+        self.pow = P.Pow()
+        self.add = P.Add()
+        self.sqrt = P.Sqrt()
+        self.div = P.Div()
+        self.mul = P.Mul()
+        self.layer_norm_weight = Parameter(Tensor(np.ones(d_model).astype(np.float32)), name=None)
+        self.layer_norm_bias = Parameter(Tensor(np.zeros(d_model).astype(np.float32)), name=None)
+
+    def construct(self, x):
+        """construct function"""
+        diff_ex = self.sub(x, self.reducemean(x, -1))
+        var_x = self.reducemean(self.pow(diff_ex, 2.0), -1)
+        output = self.div(diff_ex, self.sqrt(self.add(var_x, 1e-12)))
+        output = self.add(self.mul(output, self.layer_norm_weight), self.layer_norm_bias)
+        return output
 
 
 class MultiHeadAttention(nn.Cell):
@@ -106,8 +134,8 @@ class TransformerEncoderLayer(nn.Cell):
                                 weight_init=KaimingUniform(),
                                 bias_init=UniformBias([d_model, dim_feedforward]))
 
-        self.norm1 = nn.LayerNorm((d_model,))
-        self.norm2 = nn.LayerNorm((d_model,))
+        self.norm1 = CustomLayerNorm(d_model)
+        self.norm2 = CustomLayerNorm(d_model)
         self.dropout1 = nn.Dropout(keep_prob=1 - dropout)
         self.dropout2 = nn.Dropout(keep_prob=1 - dropout)
 
@@ -159,7 +187,7 @@ class TransformerEncoder(nn.Cell):
             self.layers.append(layer)
 
         self.num_layers = num_layers
-        self.norm = nn.LayerNorm((d_model,)) if normalize_before else None
+        self.norm = CustomLayerNorm(d_model) if normalize_before else None
 
     def construct(self, src, mask, pos):
         output = src
@@ -189,9 +217,9 @@ class TransformerDecoderLayer(nn.Cell):
                                 weight_init=KaimingUniform(),
                                 bias_init=UniformBias([d_model, dim_feedforward]))
 
-        self.norm1 = nn.LayerNorm((d_model,))
-        self.norm2 = nn.LayerNorm((d_model,))
-        self.norm3 = nn.LayerNorm((d_model,))
+        self.norm1 = CustomLayerNorm(d_model)
+        self.norm2 = CustomLayerNorm(d_model)
+        self.norm3 = CustomLayerNorm(d_model)
         self.dropout1 = nn.Dropout(keep_prob=1 - dropout)
         self.dropout2 = nn.Dropout(keep_prob=1 - dropout)
         self.dropout3 = nn.Dropout(keep_prob=1 - dropout)
@@ -268,7 +296,7 @@ class TransformerDecoder(nn.Cell):
             self.layers.append(layer)
 
         self.num_layers = num_layers
-        self.norm = nn.LayerNorm((d_model,))
+        self.norm = CustomLayerNorm(d_model)
         self.return_intermediate = return_intermediate
 
         self.stack = ops.Stack()
